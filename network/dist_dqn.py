@@ -1,10 +1,35 @@
 import torch
 from torch import nn
+from torch.nn import functional as F
 
 class DistDQN(nn.Module):
-    def __init__(self, input_size, *args, **kwargs) -> None:
+    def __init__(self, input_size, config, *args, **kwargs) -> None:
         super(DistDQN, self).__init__(*args, **kwargs)
-        self.l1 = nn.Linear(input_size, )
+        self.cfg = config
+        self.l1 = nn.Linear(input_size, 
+                            self.cfg.dist_network_dim[1])
+        self.l2 = nn.Linear(self.cfg.dist_network_dim[1], 
+                            self.cfg.dist_network_dim[2])
+        self.l3 = torch.tensor([])
+        for i in range(self.cfg.action_space):
+            setattr(self, 
+                    f'l3_{i}', 
+                    nn.Linear(self.cfg.dist_network_dim[2], 
+                              self.cfg.dist_network_dim[3]
+                              )
+                    )
+            
+    def forward(self, x):
+        x = F.normalize(x, dim=0)
+        x = torch.selu(self.l1(x))
+        x = torch.selu(self.l2(x))
+        for i in range(self.cfg.action_space):
+            l3_tmp = getattr(self,f'l3_{i}')
+            x_temp = l3_tmp(x).unsqueeze(dim=0)
+            self.l3 = torch.cat([self.l3, x_temp], dim=0) 
+        self.l3 = F.softmax(self.l3, dim=1)
+        return self.l3
+            
 
 
 class DistDQN2:
@@ -15,12 +40,13 @@ class DistDQN2:
         self.cfg = cfg 
         pass
     def forward(self, x):
-        dim0, dim1, dim2, dim3 = self.cfg['dist_network_dim']
+        dims = self.cfg.dist_network_dim
+        dim0, dim1, dim2, dim3 = dims
         t1 = dim0 * dim1
         t2 = dim1 * dim2
         theta1 = self.theta[0:t1].reshape(dim0, dim1)
         theta2 = self.theta[t1:t1+t2].reshape(dim1, dim2)
-        l1 = self.x @ theta1
+        l1 = x @ theta1
         l1 = torch.selu(l1)
         l2 = l1 @ theta2
         l2 = torch.selu(l2)
@@ -35,6 +61,24 @@ class DistDQN2:
         l3 = torch.nn.functional.softmax(l3, dim=2)
         return l3.squeeze()
 
+
 if __name__ == '__main__':
-    nn = DistDQN2(1,1,1,1)
-    print(nn)
+    import dotenv, os, sys, torch
+    dotenv.load_dotenv()
+    sys.path.append('./configs')
+    from config import Config
+    
+    n_param = 128*100 + 100*25 + 25*51*3
+    param = torch.randn(n_param)/10.
+    model = DistDQN2(param,3,Config())
+    res = model.forward(
+                torch.randn((1,128))
+                # torch.randn((128))
+                )
+    print(res.shape)
+
+    model = DistDQN(128,Config())
+    res = model(
+        torch.randn((128))
+             )
+    print(res.shape)
