@@ -25,6 +25,7 @@
 '''
 import sys
 sys.path.append('network')
+sys.path.append('configs')
 
 from utils import utils
 from environment import env_manager
@@ -32,6 +33,7 @@ from network import nn_manager
 from episode import episode
 from agent import RLagent
 from loss import LossFn
+from config import Config
 import torch.multiprocessing as mp
 
 from pathlib import Path
@@ -74,7 +76,8 @@ def train_mp(proc_no, cfg, nn_cls_0, counter):
                 configs=cfg
                 )
 
-    for i in range(cfg['epochs']):
+    # for i in range(cfg['epochs']):
+    for i in range(cfg.epochs):
         # train agent class
         losses = agent_.run_update()
         if i % 100 == 0:
@@ -82,21 +85,25 @@ def train_mp(proc_no, cfg, nn_cls_0, counter):
 
 
 if __name__ == '__main__':
-    cfg = utils.get_configs()
-
+    cfg = Config()
+    print(vars(cfg))
     temp_env = env_manager.get_env(cfg)
     state_size = temp_env.reset()[0].shape[0]
+
 
     nn_network, network_names = nn_manager.get_network(cfg)
     if isinstance(nn_network, list):
         for i, n in enumerate(network_names):
             globals()[n] = nn_network[i]
-    nn_cls_0 = globals()[network_names[0]](input_size=state_size) # single casse
+    
+    # single casse
+    nn_cls_0 = globals()[network_names[0]](input_size=state_size,
+                                           config=cfg) # single casse
 
     nn_cls_0.share_memory()
     procs = []
     epoch_counter_shared = mp.Value('i', 0)
-    for i in range(cfg['num_multi_procs']):
+    for i in range(cfg.num_multi_procs):
         proc = mp.Process(target=train_mp,
                           args=(i, cfg, nn_cls_0, epoch_counter_shared))
         proc.start()

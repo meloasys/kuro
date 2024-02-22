@@ -3,7 +3,7 @@ from torch import nn
 from torch.nn import functional as F
 
 class ActorCritic(nn.Module):
-    def __init__(self, input_size):
+    def __init__(self, input_size, config):
         super(ActorCritic, self).__init__()
         self.l1 = nn.Linear(input_size,25)
         self.l2 = nn.Linear(25,50)

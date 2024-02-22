@@ -23,8 +23,8 @@ class RLagent:
         losses = self.update_params(
                             optimizer=self.optimizer,
                             results=results,
-                            flip_res=self.cfg['flip_res'],
-                            n_step_mode=self.cfg['n_step_mode'],
+                            flip_res=self.cfg.flip_res,
+                            n_step_mode=self.cfg.n_step_mode,
                             )
         # print(self.nn_network)
         return losses

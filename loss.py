@@ -12,7 +12,7 @@ class LossFn(Loss):
         self.config = config
     def get_loss(self, batches, weight):
 
-        if self.config['loss_fn'] == 'actor-critic':
+        if self.config.loss_fn == 'actor-critic':
             values, logprobs, returns = batches
             actor_loss = -1 * logprobs * (returns - values.detach())
             critic_loss = torch.pow(values - returns, 2)

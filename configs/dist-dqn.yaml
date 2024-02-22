@@ -17,6 +17,7 @@ state_norm: True
 
 # dist DQN
 dist_support_limit: (-10., 10.) #tuple
-dist_network_dim: (128, 100, 25, 51) # 4
+dist_network_dim: [128, 100, 25, 51] # 4
 dist_gamma: 0.8
+action_space: 3
 # loss_fn: 'cross-entropy' # actor-critic, 

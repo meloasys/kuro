@@ -16,10 +16,8 @@ class episode:
         self.nn_model = nn_model
         self.env = env
         self.state = torch.from_numpy(np.array(self.env.state)).float()
-        if cfg['state_norm']:
-            self.state = torch.nn.functional.normalize(self.state, dim=0)
-        while ((self.done==False and self.j<cfg['n_step']) 
-               if (cfg['n_step_mode'] and train_mode)
+        while ((self.done==False and self.j<cfg.n_step) 
+               if (cfg.n_step_mode and train_mode)
                else self.done==False):
             self.j += 1
             policy, value = self.nn_model(self.state)
