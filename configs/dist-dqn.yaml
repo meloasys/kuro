@@ -1,0 +1,22 @@
+env_type: 'gym' # gym, custom
+env_name: 'CartPole-v1' # if custom anyname is OK
+custom_env: 'stock_env.py'
+
+nn_mod: 'dist_dqn' # must match with network_models counts
+network_models: ['DistDQN']
+optimizer: 'adam'
+learning_rate: 1e-4
+epochs: 1000
+flip_res: True # 
+n_step_mode: True
+n_step: 100
+multi_procs: True
+num_multi_procs: 12
+loss_fn: 'actor-critic' # actor-critic, 
+state_norm: True
+
+# dist DQN
+dist_support_limit: (-10., 10.) #tuple
+dist_network_dim: (128, 100, 25, 51) # 4
+dist_gamma: 0.8
+# loss_fn: 'cross-entropy' # actor-critic, 
