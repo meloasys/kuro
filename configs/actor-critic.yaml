@@ -9,9 +9,14 @@ optimizer: 'adam'
 learning_rate: 1e-4
 epochs: 1000
 flip_res: True # 
-n_step_mode: True
-n_step: 100
 multi_procs: True
 num_multi_procs: 12
 loss_fn: 'actor-critic' # actor-critic, 
 state_norm: True
+gamma: 0.9
+clc: 0.1
+
+n_step_mode: True
+n_step: 100
+
+ep_buffer_size: 200

@@ -20,26 +20,35 @@ class RLagent:
                     self.env,
                     self.cfg,
                     ) # result incl values, logprobs, rewards
-        losses = self.update_params(
-                            optimizer=self.optimizer,
-                            results=results,
-                            flip_res=self.cfg.flip_res,
-                            n_step_mode=self.cfg.n_step_mode,
-                            )
-        # print(self.nn_network)
+        
+        # losses = self.update_params(
+        #                     optimizer=self.optimizer,
+        #                     results=results,
+        #                     flip_res=self.cfg.flip_res,
+        #                     n_step_mode=self.cfg.n_step_mode,
+        #                     )
+
+        losses = self.update_params2(results)
+
         return losses
     
     def test(self):
         import numpy as np
-        self.env.reset()
-        results = self.ep.run(
-                    self.nn_network,
-                    self.env,
-                    self.cfg,
-                    train_mode=False
-                    ) # result incl values, logprobs, rewards
-        
-        print("test finished... length of episode is ",results['ep_length'])
+
+        avg = 0
+        avg_list = []
+        for i in range(10):
+            self.env.reset()
+            results = self.ep.run(
+                        self.nn_network,
+                        self.env,
+                        self.cfg,
+                        train_mode=False
+                        ) # result incl values, logprobs, rewards
+            avg = (avg*i + results['ep_length']) / (i+1)
+            
+        # print("test finished... avg length of episode is ",results['ep_length'])
+        print("test finished... avg length of episode is ", avg)
         return results
 
     def update_params(self, optimizer, results, 
@@ -67,15 +76,77 @@ class RLagent:
         # better result for q_val normalized
         values = torch.nn.functional.normalize(values, dim=0)
         bathes = (values, logprobs, returns)
-        
-        actor_loss, critic_loss, total_loss = self.loss_fn.get_loss(batches=bathes,
-                                                                    weight=clc,
-                                                                    )
+        actor_loss, critic_loss, total_loss = self.loss_fn.get_loss(
+                                                        batches=bathes,
+                                                        weight=clc,
+                                                        )
         total_loss.backward()
-        optimizer.step()
-        optimizer.zero_grad()
+        self.optimizer.step()
+        self.optimizer.zero_grad()
 
         return (actor_loss, critic_loss, total_loss)
+
+    def update_params2(self, results):
+        '''
+        results includes ep_buffer and others...
+        ep_buffer dictionary includes value, action, reward, next_state, logprob
+        '''
+        ep_buffer = results['ep_buffer']
+    
+        # add 1. batch size, shuffle, 
+
+        values = torch.stack([buff['value'] for buff in ep_buffer], dim=1).view(-1)
+        actions = torch.tensor([buff['action'] for buff in ep_buffer])
+        rewards = torch.tensor([buff['reward'] for buff in ep_buffer])
+        logprobs = torch.stack([buff['logprob'] for buff in ep_buffer], dim=0).view(-1)
+        dones = torch.tensor([buff['done'] for buff in ep_buffer])
+
+        next_states = torch.stack([torch.tensor(buff['next_state']) for buff in ep_buffer], dim=0)
+
+        if self.cfg.flip_res:
+            values = values.flip(dims=(0,))
+            logprobs = logprobs.flip(dims=(0,))
+            rewards = rewards.flip(dims=(0,))
+            dones = dones.flip(dims=(0,))
+        
+        # print(values.shape, actions.shape, rewards.shape, logprobs.shape, next_states.shape, dones)
+            
+        returns = [] # 수익, return - v(s) = 이익
+        
+        if self.cfg.n_step_mode:
+            if dones[0] == 1:
+                return_ = torch.Tensor([0])
+            else:
+                return_ = values[0].detach()
+        else:
+            return_ = torch.Tensor([0])
+        
+        for i in range(rewards.shape[0]):
+            return_ = rewards[i] + self.cfg.gamma * return_
+            returns.append(return_)
+            
+        returns = torch.stack(returns).view(-1)
+        returns = torch.nn.functional.normalize(returns, dim=0)
+        # better result for q_val normalized
+        values = torch.nn.functional.normalize(values, dim=0)
+
+        # print(values, logprobs, returns)
+
+        bathes = (values, logprobs, returns)
+        
+        actor_loss, critic_loss, total_loss = self.loss_fn.get_loss(
+                                                        batches=bathes,
+                                                        weight=self.cfg.clc,
+                                                        )
+        
+        # total_loss.requires_grad_(True)
+        total_loss.backward()
+        self.optimizer.step()
+        self.optimizer.zero_grad()
+
+        return (actor_loss, critic_loss, total_loss)
+
+        
         
     def update_dist(self, reward, support, probs):
         '''fn only works for distributed DQN'''

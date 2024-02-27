@@ -1,28 +1,3 @@
-
-# state
-# get qval or policy prob
-
-'''
-- get state from environemnt
-- define agent
-- get qval or policy prob
-- define tain method (stocastic, batch, n-step)
-- 
-내가 있고 에이전트가 있다.
-
-나의 역할 (생성해서 넘겨준다)
-    환경을 생성
-    에피소드를 생성
-    네트워크를 생성
-    훈련루프 생성
-
-
-에이전트의 역할
-    에피소드를 수행
-    환경 업데이트
-    네트워크 업데이트
-    훈련을 수행
-'''
 import sys
 sys.path.append('network')
 sys.path.append('configs')
@@ -30,7 +5,7 @@ sys.path.append('configs')
 from utils import utils
 from environment import env_manager
 from network import nn_manager
-from episode import episode
+from episode import episode, episode2
 from agent import RLagent
 from loss import LossFn
 from config import Config
@@ -65,7 +40,7 @@ def train_mp(proc_no, cfg, nn_cls_0, counter):
     optimizer.zero_grad()
     loss_fn = LossFn(cfg)
 
-    episode_ = episode()
+    episode_ = episode2(cfg)
     # create agent class
     agent_ = RLagent(
                 nn_network=nn_cls_0,
@@ -80,7 +55,7 @@ def train_mp(proc_no, cfg, nn_cls_0, counter):
     for i in range(cfg.epochs):
         # train agent class
         losses = agent_.run_update()
-        if i % 100 == 0:
+        if i % 200 == 0:
             agent_.test()        
 
 
@@ -112,23 +87,3 @@ if __name__ == '__main__':
         p.join()
     for p in procs:
         p.terminate()
-
-'''
-내가 있고 에이전트가 있다.
-
-나의 역할 (생성해서 넘겨준다)
-    환경을 생성
-    네트워크를 생성
-    에피소드를 생성
-    훈련루프 생성
-
-
-에이전트의 역할
-    환경 업데이트
-    네트워크 업데이트
-    에피소드를 수행
-    훈련을 수행
-
-
-
-'''
