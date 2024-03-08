@@ -1,36 +1,26 @@
 import sys
 sys.path.append('network')
 sys.path.append('configs')
+sys.path.append('agent')
 
-from utils import utils
 from environment import env_manager
 from network import nn_manager
-from episode import episode, episode2
+from episode import episode
 from agent import RLagent
 from loss import LossFn
 from config import Config
 import torch.multiprocessing as mp
 
-from pathlib import Path
-import dotenv, os, sys, torch
+import dotenv, sys, time
+from matplotlib import pyplot as plt
+import numpy as np
+from tqdm import tqdm
+
 dotenv.load_dotenv()
 
-from network.actor_critic_nn import ActorCritic
-
-# cfg = utils.get_configs()
-
-# nn_network, network_names = nn_manager.get_network(cfg)
-# if isinstance(nn_network, list):
-#     for i, n in enumerate(network_names):
-#         globals()[n] = nn_network[i]
-
-# temp_env = env_manager.get_env(cfg)
-# env_size = temp_env.reset()[0].shape[0]
-# nn_cls_0 = globals()[network_names[0]](input_size=env_size) # single casse
-
-
 def train_mp(proc_no, cfg, nn_cls_0, counter):
-    env = env_manager.get_env(cfg)
+    env_manager.Environment.set_env(cfg)
+    env = env_manager.Environment.get_env()
     env.reset()
 
     optimizer = nn_manager.get_optimizer(
@@ -40,7 +30,7 @@ def train_mp(proc_no, cfg, nn_cls_0, counter):
     optimizer.zero_grad()
     loss_fn = LossFn(cfg)
 
-    episode_ = episode2(cfg)
+    episode_ = episode(cfg)
     # create agent class
     agent_ = RLagent(
                 nn_network=nn_cls_0,
@@ -50,19 +40,25 @@ def train_mp(proc_no, cfg, nn_cls_0, counter):
                 episode=episode_,
                 configs=cfg
                 )
-
-    # for i in range(cfg['epochs']):
-    for i in range(cfg.epochs):
+    fname = int(time.time())
+    losses = []
+    for i in tqdm(range(cfg.epochs)):
         # train agent class
-        losses = agent_.run_update()
-        if i % 200 == 0:
-            agent_.test()        
+        loss = agent_.run_update()
+        losses.append(loss)
+        if i % 100 == 0:
+        #     agent_.test()        
+            # print(f'epoch {i} loss _ ', losses)
+            plt.plot(np.arange(len(losses)), np.array(losses))
+            plt.savefig(f'run/loss_{fname}.jpg')
+
 
 
 if __name__ == '__main__':
     cfg = Config()
     print(vars(cfg))
-    temp_env = env_manager.get_env(cfg)
+    env_manager.Environment.set_env(cfg)
+    temp_env = env_manager.Environment.get_env()
     state_size = temp_env.reset()[0].shape[0]
 
 
@@ -75,15 +71,21 @@ if __name__ == '__main__':
     nn_cls_0 = globals()[network_names[0]](input_size=state_size,
                                            config=cfg) # single casse
 
-    nn_cls_0.share_memory()
-    procs = []
-    epoch_counter_shared = mp.Value('i', 0)
-    for i in range(cfg.num_multi_procs):
-        proc = mp.Process(target=train_mp,
-                          args=(i, cfg, nn_cls_0, epoch_counter_shared))
-        proc.start()
-        procs.append(proc)
-    for p in procs:
-        p.join()
-    for p in procs:
-        p.terminate()
+    if cfg.multi_procs:
+        nn_cls_0.share_memory()
+        procs = []
+        epoch_counter_shared = mp.Value('i', 0)
+        for i in range(cfg.num_multi_procs):
+            proc = mp.Process(target=train_mp,
+                            args=(i, cfg, nn_cls_0, epoch_counter_shared))
+            proc.start()
+            procs.append(proc)
+        for p in procs:
+            p.join()
+        for p in procs:
+            p.terminate()
+    else:
+        train_mp(0, cfg, nn_cls_0, 0) 
+
+
+    

@@ -9,34 +9,27 @@ class Loss:
 class LossFn(Loss):
     def __init__(self, config):
         super(LossFn,self).__init__()
-        self.config = config
-    def get_loss(self, batches, weight):
+        self.cfg = config
+    def get_loss(self, batches):
 
-        if self.config.loss_fn == 'actor-critic':
+        if self.cfg.loss_fn == 'actor-critic':
             values, logprobs, returns = batches
             actor_loss = -1 * logprobs * (returns - values.detach())
             critic_loss = torch.pow(values - returns, 2)
-            total_loss = (1-weight)*actor_loss.sum() + weight*critic_loss.sum()         
-            return actor_loss, critic_loss, total_loss
+            total_loss = (1-self.cfg.clc)*actor_loss.sum() + self.cfg.clc*critic_loss.sum()         
+            return total_loss
         
-        elif self.config['loss_fn'] == 'cross-entropy':
+        elif self.cfg.loss_fn == 'cross-entropy':
             '''works for distributed DQN'''
             x, y = batches
             loss = torch.Tensor([0.])
             loss.requires_grad = True
             for i in range(x.shape[0]):
-                loss_ = -1 \
-                        * torch.log(x[i].flatten(start_dim=0)) \
-                        @ y[i].flatten(start_dim=0)
-                loss += loss_
+                loss_ = -1 * torch.log(x[i].flatten(start_dim=0)) @ y[i].flatten(start_dim=0)
+                loss = loss + loss_
 
             return loss
         
-        
-        
-    # def get_name(self):
-    #     print(self.config)
-
 if __name__ == "__main__":
     cfg = dict(loss_fn='hihi')
     loss =LossFn(cfg)

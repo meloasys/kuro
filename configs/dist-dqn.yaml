@@ -1,29 +1,44 @@
 env_type: 'gym' # gym, custom
-env_name: 'CartPole-v1' # if custom anyname is OK
-custom_env: 'stock_env.py'
+env_name: 'Freeway-ram-v0' # if custom anyname is OK
+# custom_env: 'stock_env.py'
 
 nn_mod: 'dist_dqn' # must match with network_models counts
 network_models: ['DistDQN']
 optimizer: 'adam'
-learning_rate: 1e-4
-epochs: 1000
-flip_res: True # 
-multi_procs: True
-num_multi_procs: 12
-loss_fn: 'actor-critic' # actor-critic, 
+learning_rate: 2.0e-3
+epochs: 3000
+flip_res: False # 
+multi_procs: False
+num_multi_procs: 1
+loss_fn: 'cross-entropy' # actor-critic, cross-entropy
 state_norm: True
 
-
-n_step_mode: True
+n_step_mode: False
 n_step: 100
 
+replay_mode: True
 ep_buffer_size: 200
 
-
-
 # dist DQN
-dist_support_limit: (-10., 10.) #tuple
+dist_support_limit: [-10., 10.]
+support_div: 51
 dist_network_dim: [128, 100, 25, 51] # 4
 dist_gamma: 0.8
 action_space: 3
-# loss_fn: 'cross-entropy' # actor-critic, 
+
+# exploration
+greedy: True
+softmax: False # find it in episode
+epsilon: 0.2
+epsilon_min: 0.05
+
+# experience priority
+exp_priority: True
+priority_level: 5
+
+# shuffle experience
+sampled_batch: True
+batch_size: 50
+
+
+

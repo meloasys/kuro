@@ -1,4 +1,4 @@
-import torch
+import torch, time
 
 
 def get_network(cfg):
@@ -14,6 +14,8 @@ def get_network(cfg):
     
 def get_optimizer(config, parameters):
     learning_rate = float(config.learning_rate)
+    print('LEARNING RATE __________ ', learning_rate)
+    time.sleep(1)
     if config.optimizer == 'adam':
         optim = torch.optim.Adam(lr=learning_rate,
                                  params=parameters)

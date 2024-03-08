@@ -10,7 +10,6 @@ class DistDQN(nn.Module):
                             self.cfg.dist_network_dim[1])
         self.l2 = nn.Linear(self.cfg.dist_network_dim[1], 
                             self.cfg.dist_network_dim[2])
-        self.l3 = torch.tensor([])
         for i in range(self.cfg.action_space):
             setattr(self, 
                     f'l3_{i}', 
@@ -20,14 +19,16 @@ class DistDQN(nn.Module):
                     )
             
     def forward(self, x):
+        self.l3 = []
         x = F.normalize(x, dim=0)
         x = torch.selu(self.l1(x))
         x = torch.selu(self.l2(x))
         for i in range(self.cfg.action_space):
             l3_tmp = getattr(self,f'l3_{i}')
-            x_temp = l3_tmp(x).unsqueeze(dim=0)
-            self.l3 = torch.cat([self.l3, x_temp], dim=0) 
-        self.l3 = F.softmax(self.l3, dim=1)
+            x_temp = l3_tmp(x)
+            self.l3.append(x_temp)
+        self.l3 = torch.stack(self.l3, dim=1)
+        self.l3 = F.softmax(self.l3, dim=2)
         return self.l3
             
 
@@ -63,7 +64,7 @@ class DistDQN2:
 
 
 if __name__ == '__main__':
-    import dotenv, os, sys, torch
+    import dotenv, sys, torch
     dotenv.load_dotenv()
     sys.path.append('./configs')
     from config import Config

@@ -18,7 +18,7 @@ class ActorCritic(nn.Module):
         x = F.relu(self.l2(x))
         # forward actor
         x_actor = self.actor_lin(x)
-        x_actor = F.log_softmax(x_actor, dim=0)
+        x_actor = F.log_softmax(x_actor, dim=1)
         # forward critic
         x_critic = F.relu(self.l3(x.detach()))
         x_critic = self.critic_lin(x_critic)
