@@ -67,7 +67,8 @@ class RLagent:
                     ) # result incl values, logprobs, rewards
         loss = self.update_params(results)
 
-        if self.epochs > self.cfg.epsilon_thrs and self.cfg.epsilon > self.cfg.epsilon_min: #L
+        if self.epochs > self.cfg.epsilon_thrs \
+                and self.cfg.epsilon > self.cfg.epsilon_min: #L
             dec = 1./np.log2(self.epochs)
             dec /= 1e3
             self.cfg.epsilon -= dec
@@ -89,12 +90,18 @@ class RLagent:
 
         # values = torch.stack([buff['value'] for buff in ep_buffer], dim=1).view(-1)
         values = torch.stack([buff['value'].squeeze(dim=0) for buff in ep_buffer], dim=0)
-        actions = torch.tensor([buff['action'] for buff in ep_buffer])
-        rewards = torch.tensor([buff['reward'] for buff in ep_buffer])
-        logprobs = torch.stack([buff['logprob'] for buff in ep_buffer], dim=0)
-        dones = torch.tensor([buff['done'] for buff in ep_buffer])
-        states = torch.stack([buff['state'] for buff in ep_buffer], dim=0)
-        next_states = torch.stack([buff['next_state'] for buff in ep_buffer], dim=0)
+        actions = torch.tensor([buff['action'] 
+                                for buff in ep_buffer])
+        rewards = torch.tensor([buff['reward'] 
+                                for buff in ep_buffer])
+        logprobs = torch.stack([buff['logprob'] 
+                                for buff in ep_buffer], dim=0)
+        dones = torch.tensor([buff['done'] 
+                              for buff in ep_buffer])
+        states = torch.stack([buff['state'] 
+                              for buff in ep_buffer], dim=0)
+        next_states = torch.stack([buff['next_state'] 
+                                   for buff in ep_buffer], dim=0)
 
         if self.cfg.flip_res:
             values = values.flip(dims=(0,))
@@ -138,14 +145,17 @@ class RLagent:
         total_loss.backward()
         self.optimizer.step()
 
-        if self.cfg.target_nn and (self.epochs % self.cfg.t_update == 0):
-            self.nn_network_t.load_state_dict(self.nn_network.state_dict())
+        if self.cfg.target_nn \
+                and (self.epochs % self.cfg.t_update == 0):
+            self.nn_network_t.load_state_dict(
+                                    self.nn_network.state_dict())
 
         return total_loss
 
     def get_returns(self, done_batch, value_batch, reward_batch):
         '''for ActorCritic model'''
-        assert self.cfg.flip_res, "you should flip episode result to get returns"
+        assert self.cfg.flip_res, \
+                "you should flip episode result to get returns"
         returns = [] # 수익, return - v(s) = 이익
         if self.cfg.n_step_mode:
             if done_batch[0] == 1:
@@ -174,7 +184,8 @@ class RLagent:
             dist = dist_full[action]
             r = reward_batch[i]
 
-            expectations = [support @ dist_batch[i,a,:] for a in range(dist_batch.shape[1])]
+            expectations = [support @ dist_batch[i,a,:] 
+                                for a in range(dist_batch.shape[1])]
             next_q_val = np.max(expectations)
             
             if r != -1: # when episode ends

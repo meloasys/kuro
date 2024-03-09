@@ -23,7 +23,8 @@ class episode:
             action = []
             support = utils.get_support(cfg)
             for b in range(pred.shape[0]):
-                expectations = [support @ pred[b,a,:] for a in range(pred.shape[1])]  
+                expectations = [support @ pred[b,a,:] 
+                                    for a in range(pred.shape[1])]  
                 action_ = torch.tensor(np.argmax(expectations))
                 action.append(action_)
         return action
@@ -71,7 +72,8 @@ class episode:
                     action = action[0]
             
             # print(action)
-            state_next, reward, done, info, _ = self.env.step(int(action.detach().numpy()))
+            state_next, reward, done, info, _ = self.env.step(
+                                                int(action.detach().numpy()))
             # self.state = torch.from_numpy(state_next).float()
 
             reward, rep_priority = env_manager.Environment(cfg).get_reward(done, reward)
@@ -100,7 +102,8 @@ class episode:
             self.state = torch.tensor(state_next, dtype=torch.float32)
             
             if done:
-                self.state = torch.from_numpy(np.array(self.env.reset()[0])).float()
+                self.state = torch.from_numpy(
+                                    np.array(self.env.reset()[0])).float()
             
             self.cum_reward += reward
             del reward

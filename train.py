@@ -89,7 +89,7 @@ if __name__ == '__main__':
         epoch_counter_shared = mp.Value('i', 0)
         for i in range(cfg.num_multi_procs):
             proc = mp.Process(target=train_mp,
-                            args=(i, cfg, nn_cls_0, epoch_counter_shared))
+                        args=(i, cfg, nn_cls_0, epoch_counter_shared))
             proc.start()
             procs.append(proc)
         for p in procs:
