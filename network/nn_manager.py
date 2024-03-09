@@ -7,7 +7,7 @@ def get_network(cfg):
     instance_list = []
     for network in networks:
         tmp = __import__(mod_name)
-        print(tmp, network)
+        # print(tmp, network)
         globals()[network] = getattr(tmp, network)
         instance_list.append(globals()[network])
     return instance_list, networks

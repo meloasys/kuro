@@ -15,6 +15,7 @@ loss_fn: 'actor-critic' # actor-critic,
 state_norm: True
 gamma: 0.9
 clc: 0.1
+test_interval: 200
 
 n_step_mode: True
 n_step: 100

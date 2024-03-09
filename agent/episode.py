@@ -10,8 +10,9 @@ class episode:
         if cfg.n_step_mode:
             cfg.ep_buffer_size = 100000
         self.ep_buffer = deque(maxlen=cfg.ep_buffer_size)
-        self.eps = cfg.epsilon
         self.logprob_ = torch.tensor([0])
+        self.success_cnt = 0
+        self.cum_reward = 0
 
     def get_action(self, pred, cfg):
         if cfg.policy_value_nn or cfg.policy_nn:
@@ -88,18 +89,20 @@ class episode:
             
             if train_mode:
                 self.ep_buffer.append(exprience)
-
-                if cfg.exp_priority and rep_priority:
-                    print(f'pass episode! at {epochs} done _ {done} len_ep __ {j}')
+            
+            if cfg.exp_priority and rep_priority:
+                # print(f'pass episode! at {epochs} done _ {done} len_ep __ {j}')
+                self.success_cnt += 1
+                if train_mode:
                     for i in range(cfg.priority_level):
                         self.ep_buffer.append(exprience)
             
             self.state = torch.tensor(state_next, dtype=torch.float32)
             
             if done:
-                print(f'ep___ done at {j}')
                 self.state = torch.from_numpy(np.array(self.env.reset()[0])).float()
             
+            self.cum_reward += reward
             del reward
 
             if cfg.n_step_mode and not cfg.replay_mode and train_mode:
@@ -115,6 +118,8 @@ class episode:
         results = dict(
                     ep_length=j,
                     ep_buffer=self.ep_buffer,
+                    success_cnt=self.success_cnt,
+                    cum_reward=self.cum_reward,
                     )
         
         return results

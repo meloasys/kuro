@@ -1,4 +1,4 @@
-import torch, random
+import torch, random, copy
 import numpy as np
 from utils import utils
 from tqdm import tqdm
@@ -18,10 +18,17 @@ class RLagent:
         self.target_dist = None
         self.next_values = torch.tensor([0])
         self.epochs = 0
+        self.eplens_avg = []
+        self.successes_avg = []
+        self.rewards_avg = []
+
+
+        if self.cfg.target_nn:
+            self.nn_network_t = copy.deepcopy(nn_network)
+            # print(self.nn_network_t.state_dict())
 
     def test(self):
         avg = 0
-        avg_list = []
         for i in tqdm(range(10)):
             results = self.ep.run(
                         self.nn_network,
@@ -31,8 +38,22 @@ class RLagent:
                         self.cfg.epsilon,
                         train_mode=False
                         ) # result incl values, logprobs, rewards
-            avg = (avg*i + results['ep_length']) / (i+1)
-        print("test finished... avg length of episode is ", avg)
+            eplen_avg = (avg*i + results['ep_length']) / (i+1)
+            success_avg = (avg*i + results['success_cnt']) / (i+1)
+            reward_avg = (avg*i + results['cum_reward']) / (i+1)
+        print("Test finished...")
+        print("Avg length of episode is _____ ", eplen_avg)
+        print("Avg success of episode is _____ ", success_avg)
+        print("Avg reward of episode is _____ ", reward_avg)
+        print("epsilon is _____ ", self.cfg.epsilon)
+        self.eplens_avg.append(eplen_avg)
+        self.successes_avg.append(success_avg)
+        self.rewards_avg.append(reward_avg)
+        results = dict(
+                    eplens_avg=self.eplens_avg, 
+                    successes_avg=self.successes_avg, 
+                    rewards_avg=self.rewards_avg
+                    )
         return results
     
     def run_update(self):
@@ -46,7 +67,7 @@ class RLagent:
                     ) # result incl values, logprobs, rewards
         loss = self.update_params(results)
 
-        if self.epochs > 100 and self.cfg.epsilon > self.cfg.epsilon_min: #L
+        if self.epochs > self.cfg.epsilon_thrs and self.cfg.epsilon > self.cfg.epsilon_min: #L
             dec = 1./np.log2(self.epochs)
             dec /= 1e3
             self.cfg.epsilon -= dec
@@ -70,14 +91,10 @@ class RLagent:
         values = torch.stack([buff['value'].squeeze(dim=0) for buff in ep_buffer], dim=0)
         actions = torch.tensor([buff['action'] for buff in ep_buffer])
         rewards = torch.tensor([buff['reward'] for buff in ep_buffer])
-        # logprobs = torch.stack([buff['logprob'] for buff in ep_buffer], dim=0).view(-1)
         logprobs = torch.stack([buff['logprob'] for buff in ep_buffer], dim=0)
         dones = torch.tensor([buff['done'] for buff in ep_buffer])
-
-        # next_states = torch.stack([torch.tensor(buff['next_state']) for buff in ep_buffer], dim=0)
         states = torch.stack([buff['state'] for buff in ep_buffer], dim=0)
         next_states = torch.stack([buff['next_state'] for buff in ep_buffer], dim=0)
-
 
         if self.cfg.flip_res:
             values = values.flip(dims=(0,))
@@ -97,10 +114,15 @@ class RLagent:
         elif self.cfg.value_nn:
             # with torch.no_grad():
             values = self.nn_network(states.detach())
-            self.next_values = self.nn_network(next_states.detach())
+            
+            if self.cfg.target_nn: 
+                self.next_values = self.nn_network_t(next_states.detach())
+            else:
+                self.next_values = self.nn_network(next_states.detach())
+            
             support = utils.get_support(self.cfg)
             self.target_dist = self.get_target_dist(
-                                            self.next_values,
+                                            self.next_values.detach(),
                                             actions,
                                             rewards,
                                             support)
@@ -115,6 +137,9 @@ class RLagent:
         # total_loss.requires_grad_(True)
         total_loss.backward()
         self.optimizer.step()
+
+        if self.cfg.target_nn and (self.epochs % self.cfg.t_update == 0):
+            self.nn_network_t.load_state_dict(self.nn_network.state_dict())
 
         return total_loss
 
@@ -136,6 +161,33 @@ class RLagent:
         returns = torch.nn.functional.normalize(returns, dim=0)
         return returns
         
+    def get_target_dist(self, 
+                        dist_batch, action_batch, reward_batch, 
+                        support,
+                        ):
+        '''fn only works for distributed DQN'''
+        nsup, vmin, vmax, dz = self.get_deltaz(support)
+        target_dist_batch = dist_batch.clone()
+        for i in range(dist_batch.shape[0]):
+            dist_full = dist_batch[i]
+            action = int(action_batch[i].item())
+            dist = dist_full[action]
+            r = reward_batch[i]
+
+            expectations = [support @ dist_batch[i,a,:] for a in range(dist_batch.shape[1])]
+            next_q_val = np.max(expectations)
+            
+            if r != -1: # when episode ends
+                target_dist = torch.zeros(nsup)
+                bj = np.round((r - vmin) / dz)
+                bj = int(np.clip(bj, 0, nsup-1))
+                target_dist[bj] = 1.
+            else:
+                if self.cfg.bootstrap:
+                    r = r + self.cfg.dist_gamma*next_q_val
+                target_dist = self.update_dist(r, support, dist)
+            target_dist_batch[i,action,:] = target_dist
+        return target_dist_batch
         
     def update_dist(self, reward, support, probs):
         '''fn only works for distributed DQN'''
@@ -155,27 +207,6 @@ class RLagent:
         m /= m.sum()
         return m
     
-    def get_target_dist(self, 
-                        dist_batch, action_batch, reward_batch, 
-                        support,
-                        ):
-        '''fn only works for distributed DQN'''
-        nsup, vmin, vmax, dz = self.get_deltaz(support)
-        target_dist_batch = dist_batch.clone()
-        for i in range(dist_batch.shape[0]):
-            dist_full = dist_batch[i]
-            action = int(action_batch[i].item())
-            dist = dist_full[action]
-            r = reward_batch[i]
-            if r != -1: # when episode ends
-                target_dist = torch.zeros(nsup)
-                bj = np.round((r - vmin) / dz)
-                bj = int(np.clip(bj, 0, nsup-1))
-                target_dist[bj] = 1.
-            else:
-                target_dist = self.update_dist(r, support, dist)
-            target_dist_batch[i,action,:] = target_dist
-        return target_dist_batch
 
     def get_deltaz(self, support):
         '''fn only works for distributed DQN'''

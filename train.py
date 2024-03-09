@@ -11,12 +11,13 @@ from loss import LossFn
 from config import Config
 import torch.multiprocessing as mp
 
-import dotenv, sys, time
+import dotenv, sys, datetime, os, warnings
 from matplotlib import pyplot as plt
 import numpy as np
 from tqdm import tqdm
 
 dotenv.load_dotenv()
+warnings.filterwarnings('ignore')
 
 def train_mp(proc_no, cfg, nn_cls_0, counter):
     env_manager.Environment.set_env(cfg)
@@ -40,17 +41,28 @@ def train_mp(proc_no, cfg, nn_cls_0, counter):
                 episode=episode_,
                 configs=cfg
                 )
-    fname = int(time.time())
+    dt = datetime.datetime.now().strftime("%y%m%d%H%M%S")
+    fname = 't_' + type(nn_cls_0).__name__ + '_' + dt
+    os.makedirs('run/'+fname, exist_ok=True)
     losses = []
     for i in tqdm(range(cfg.epochs)):
         # train agent class
         loss = agent_.run_update()
         losses.append(loss)
-        if i % 100 == 0:
-        #     agent_.test()        
+        if i % cfg.test_interval == 0 and i > 1:
             # print(f'epoch {i} loss _ ', losses)
             plt.plot(np.arange(len(losses)), np.array(losses))
-            plt.savefig(f'run/loss_{fname}.jpg')
+            plt.savefig(f'run/{fname}/train_loss.jpg')
+            plt.clf()
+            test_res = agent_.test()
+            eplens_avg = test_res['eplens_avg']
+            successes_avg = test_res['successes_avg']
+            rewards_avg = test_res['rewards_avg']
+            plt.plot(np.arange(len(eplens_avg)), -np.log(np.array(eplens_avg)))
+            plt.plot(np.arange(len(successes_avg)), -np.log(np.array(successes_avg)))
+            plt.plot(np.arange(len(rewards_avg)), -np.log(np.array(rewards_avg)))
+            plt.savefig(f'run/{fname}/test_res.jpg')
+            plt.clf()
 
 
 
@@ -69,7 +81,7 @@ if __name__ == '__main__':
     
     # single casse
     nn_cls_0 = globals()[network_names[0]](input_size=state_size,
-                                           config=cfg) # single casse
+                                        config=cfg) # single casse
 
     if cfg.multi_procs:
         nn_cls_0.share_memory()
@@ -88,4 +100,4 @@ if __name__ == '__main__':
         train_mp(0, cfg, nn_cls_0, 0) 
 
 
-    
+

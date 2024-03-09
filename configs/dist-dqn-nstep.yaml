@@ -7,7 +7,7 @@ network_models: ['DistDQN']
 optimizer: 'adam'
 learning_rate: 6.e-4
 epochs: 2000
-flip_res: False # 
+flip_res: True # 
 multi_procs: False
 num_multi_procs: 1
 loss_fn: 'cross-entropy' # actor-critic, cross-entropy
@@ -18,9 +18,10 @@ target_nn: True # shows stable loss reduction, non target and non bootstrap may 
 t_update: 10
 bootstrap: True # shows unstable loss but not impact on test performance
 
+
+# episode
 n_step_mode: False
 n_step: 100
-
 replay_mode: True
 ep_buffer_size: 200
 
