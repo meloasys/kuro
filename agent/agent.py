@@ -21,14 +21,14 @@ class RLagent:
         self.eplens_avg = []
         self.successes_avg = []
         self.rewards_avg = []
-
-
         if self.cfg.target_nn:
             self.nn_network_t = copy.deepcopy(nn_network)
             # print(self.nn_network_t.state_dict())
 
     def test(self):
-        avg = 0
+        eplen_avg = 0
+        success_avg = 0
+        reward_avg = 0
         for i in tqdm(range(10)):
             results = self.ep.run(
                         self.nn_network,
@@ -38,9 +38,9 @@ class RLagent:
                         self.cfg.epsilon,
                         train_mode=False
                         ) # result incl values, logprobs, rewards
-            eplen_avg = (avg*i + results['ep_length']) / (i+1)
-            success_avg = (avg*i + results['success_cnt']) / (i+1)
-            reward_avg = (avg*i + results['cum_reward']) / (i+1)
+            eplen_avg = (eplen_avg*i + results['ep_length']) / (i+1)
+            success_avg = (success_avg*i + results['success_cnt']) / (i+1)
+            reward_avg = (reward_avg*i + results['cum_reward']) / (i+1)
         print("Test finished...")
         print("Avg length of episode is _____ ", eplen_avg)
         print("Avg success of episode is _____ ", success_avg)
@@ -64,6 +64,7 @@ class RLagent:
                     self.cfg,
                     self.epochs,
                     self.cfg.epsilon,
+                    train_mode=True
                     ) # result incl values, logprobs, rewards
         loss = self.update_params(results)
 
@@ -86,7 +87,8 @@ class RLagent:
     
         # add 1. batch size, shuffle, 
         if self.cfg.sampled_batch:
-            ep_buffer = random.sample(ep_buffer, self.cfg.batch_size)
+            if len(ep_buffer) > self.cfg.batch_size: 
+                ep_buffer = random.sample(ep_buffer, self.cfg.batch_size)
 
         # values = torch.stack([buff['value'] for buff in ep_buffer], dim=1).view(-1)
         values = torch.stack([buff['value'].squeeze(dim=0) for buff in ep_buffer], dim=0)
@@ -157,7 +159,7 @@ class RLagent:
         assert self.cfg.flip_res, \
                 "you should flip episode result to get returns"
         returns = [] # 수익, return - v(s) = 이익
-        if self.cfg.n_step_mode:
+        if self.cfg.ep_lim:
             if done_batch[0] == 1:
                 return_ = torch.Tensor([0])
             else: # bootstrapping 

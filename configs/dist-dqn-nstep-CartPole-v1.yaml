@@ -1,0 +1,53 @@
+# Environment
+env_type: 'gym' # gym, custom
+env_name: 'CartPole-v1' # if custom anyname is OK
+# custom_env: 'stock_env.py'
+
+# Network
+nn_mod: 'dist_dqn' # must match with network_models counts
+network_models: ['DistDQN']
+loss_fn: 'cross-entropy' # actor-critic, cross-entropy
+action_space: 2
+
+# Train
+optimizer: 'adam'
+learning_rate: 1.e-3
+epochs: 2000
+multi_procs: False # use multi processing
+num_multi_procs: 1
+
+# Agent
+## run
+greedy: True
+softmax: False # in Episode
+epsilon: 0.2 # in Episode
+epsilon_min: 0.05 # in Episode
+epsilon_thrs: 200 # in Episode
+
+## update parameter
+flip_res: False # 
+test_interval: 100
+sampled_batch: False # with shuffling
+batch_size: 50
+target_nn: False # for value fn
+t_update: 50 # for value fn
+
+# Episode
+ep_lim: True # episode 'n step' mode
+ignore_done: False # prior than ep_lim
+epbuff_size: 200
+reset_epbuff: True
+exp_priority: True # experience priority
+priority_level: 5
+
+# Dist DQN
+dist_network_dim: [128, 100, 25, 11] # in network
+dist_gamma: 0.8 # in agent
+bootstrap: False # in agent  
+support_div: 11 # in utils
+dist_support_limit: [-10., 1.] # in utils
+
+
+
+
+

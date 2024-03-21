@@ -19,5 +19,8 @@ def get_optimizer(config, parameters):
     if config.optimizer == 'adam':
         optim = torch.optim.Adam(lr=learning_rate,
                                  params=parameters)
+    elif config.optimizer == 'SGD':
+        optim = torch.optim.SGD(lr=learning_rate,
+                                 params=parameters)
     assert optim is not None, 'Optimizer is not set'
     return optim

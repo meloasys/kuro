@@ -58,9 +58,9 @@ def train_mp(proc_no, cfg, nn_cls_0, counter):
             eplens_avg = test_res['eplens_avg']
             successes_avg = test_res['successes_avg']
             rewards_avg = test_res['rewards_avg']
-            plt.plot(np.arange(len(eplens_avg)), -np.log(np.array(eplens_avg)))
-            plt.plot(np.arange(len(successes_avg)), -np.log(np.array(successes_avg)))
-            plt.plot(np.arange(len(rewards_avg)), -np.log(np.array(rewards_avg)))
+            plt.plot(np.arange(len(eplens_avg)), np.array(eplens_avg))
+            plt.plot(np.arange(len(successes_avg)), np.array(successes_avg))
+            plt.plot(np.arange(len(rewards_avg)), np.array(rewards_avg))
             plt.savefig(f'run/{fname}/test_res.jpg')
             plt.clf()
 

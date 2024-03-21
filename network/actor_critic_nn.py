@@ -7,7 +7,7 @@ class ActorCritic(nn.Module):
         super(ActorCritic, self).__init__()
         self.l1 = nn.Linear(input_size,25)
         self.l2 = nn.Linear(25,50)
-        self.actor_lin = nn.Linear(50,2)
+        self.actor_lin = nn.Linear(50, config.action_space)
         self.l3 = nn.Linear(50,25)
         self.critic_lin = nn.Linear(25,1)
         

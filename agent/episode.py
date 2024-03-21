@@ -7,9 +7,10 @@ from utils import utils
 
 class episode:
     def __init__(self, cfg) -> None:
-        if cfg.n_step_mode:
-            cfg.ep_buffer_size = 100000
-        self.ep_buffer = deque(maxlen=cfg.ep_buffer_size)
+        if cfg.ep_lim or cfg.ignore_done:
+            self.ep_buffer = deque(maxlen=cfg.epbuff_size)
+        else:
+            self.ep_buffer = []
         self.logprob_ = torch.tensor([0])
         self.success_cnt = 0
         self.cum_reward = 0
@@ -29,8 +30,10 @@ class episode:
                 action.append(action_)
         return action
 
-    def run(self, nn_model, env, cfg, epochs, epsilon, train_mode=True):
-        self.__init__(cfg)
+    def run(self, nn_model, env, cfg, 
+                epochs, epsilon, train_mode=False):
+        if cfg.reset_epbuff:
+            self.__init__(cfg)
 
         cfg.epsilon = epsilon
         done = False
@@ -71,12 +74,12 @@ class episode:
                 if isinstance(action, list):
                     action = action[0]
             
-            # print(action)
             state_next, reward, done, info, _ = self.env.step(
                                                 int(action.detach().numpy()))
             # self.state = torch.from_numpy(state_next).float()
 
-            reward, rep_priority = env_manager.Environment(cfg).get_reward(done, reward)
+            reward, rep_priority = env_manager.Environment(
+                                        cfg).get_reward(done, reward)
 
 
             exprience = dict(
@@ -84,20 +87,20 @@ class episode:
                         action=action, 
                         reward=reward, 
                         state=self.state, 
-                        next_state=torch.tensor(state_next, dtype=torch.float32),
+                        next_state=torch.tensor(state_next, 
+                                                dtype=torch.float32),
                         logprob=self.logprob_,
                         done=done, 
                         )
             
+            if rep_priority:
+                # print(f'pass episode! at epochs{epochs} done _ {done} len_ep __ {j}')
+                self.success_cnt += 1
             if train_mode:
                 self.ep_buffer.append(exprience)
-            
-            if cfg.exp_priority and rep_priority:
-                # print(f'pass episode! at {epochs} done _ {done} len_ep __ {j}')
-                self.success_cnt += 1
-                if train_mode:
-                    for i in range(cfg.priority_level):
-                        self.ep_buffer.append(exprience)
+            if cfg.exp_priority and rep_priority and train_mode:
+                for i in range(cfg.priority_level):
+                    self.ep_buffer.append(exprience)
             
             self.state = torch.tensor(state_next, dtype=torch.float32)
             
@@ -107,16 +110,25 @@ class episode:
             
             self.cum_reward += reward
             del reward
-
-            if cfg.n_step_mode and not cfg.replay_mode and train_mode:
-                if done==False and j<cfg.n_step: looper = True
-                else: looper = False
-            elif not cfg.n_step_mode and cfg.replay_mode and train_mode:
-                if len(self.ep_buffer)<cfg.ep_buffer_size: looper = True
-                else: looper = False
+            
+            # stop when done or full of buffer
+            if cfg.ep_lim and train_mode:
+                if done==False and len(self.ep_buffer)<cfg.epbuff_size: 
+                    looper = True
+                else:
+                    looper = False
             else:
-                if done==False: looper = True
-                else: looper = False
+                if done==False: 
+                    looper = True
+                else: 
+                    looper = False
+
+            # stop only when full of buffer
+            if cfg.ignore_done and train_mode:
+                if len(self.ep_buffer)<cfg.epbuff_size:
+                    looper = True
+                else:
+                    looper = False
 
         results = dict(
                     ep_length=j,
