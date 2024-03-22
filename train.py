@@ -45,7 +45,8 @@ def train_mp(proc_no, cfg, nn_cls_0, counter):
     fname = 't_' + type(nn_cls_0).__name__ + '_' + dt
     os.makedirs('run/'+fname, exist_ok=True)
     losses = []
-    for i in tqdm(range(cfg.epochs)):
+    # for i in tqdm(range(cfg.epochs)):
+    for i in range(cfg.epochs):
         # train agent class
         loss = agent_.run_update()
         losses.append(loss)

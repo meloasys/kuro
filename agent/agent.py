@@ -29,7 +29,8 @@ class RLagent:
         eplen_avg = 0
         success_avg = 0
         reward_avg = 0
-        for i in tqdm(range(10)):
+        # for i in tqdm(range(10)):
+        for i in range(10):
             results = self.ep.run(
                         self.nn_network,
                         self.env,
@@ -41,7 +42,7 @@ class RLagent:
             eplen_avg = (eplen_avg*i + results['ep_length']) / (i+1)
             success_avg = (success_avg*i + results['success_cnt']) / (i+1)
             reward_avg = (reward_avg*i + results['cum_reward']) / (i+1)
-        print("Test finished...")
+        print(f"Test finished..., epoch {self.epochs}")
         print("Avg length of episode is _____ ", eplen_avg)
         print("Avg success of episode is _____ ", success_avg)
         print("Avg reward of episode is _____ ", reward_avg)

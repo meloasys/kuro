@@ -1,0 +1,43 @@
+# Environment
+env_type: 'gym' # gym, custom
+env_name: 'CartPole-v1' # if custom anyname is OK
+
+# Network
+nn_mod: 'actor_critic_nn' # must match with network_models counts
+network_models: ['ActorCritic']
+action_space: 2
+
+# Train
+optimizer: 'adam'
+learning_rate: 1.e-4
+epochs: 1000
+loss_fn: 'actor-critic' # actor-critic, 
+multi_procs: True
+num_multi_procs: 10
+
+# Agent
+## run
+epsilon: 0.2
+epsilon_min: 0.19 # in Episode
+epsilon_thrs: 200
+
+# update parameter
+flip_res: True # 
+test_interval: 100
+sampled_batch: False
+batch_size: 50
+target_nn: False # not support
+t_update: 50
+
+# Episode
+ep_lim: True
+ignore_done: False
+epbuff_size: 200
+reset_epbuff: True
+exp_priority: False # bad due to return calculation
+priority_level: 5
+
+# Actor-Critic
+state_norm: True
+gamma: 0.9
+clc: 0.1
