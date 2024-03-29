@@ -8,7 +8,15 @@ class RLagent:
                 nn_network, optimizer, loss_inst,
                 environment, episode,
                 configs) -> None:
-        self.nn_network = nn_network
+        self.nn_other_net = None
+        self.nn_network = None
+        if len(configs.network_models) > 1:
+            self.nn_network = nn_network[configs.network_models[0]]
+            nn_network.pop(configs.network_models[0])
+            self.nn_other_net = nn_network
+            print('Agent choose multi network')
+        else:
+            self.nn_network = nn_network
         self.optimizer = optimizer
         self.loss_fn = loss_inst
         self.env = environment
@@ -141,7 +149,8 @@ class RLagent:
         # print(values.shape, actions.shape, rewards.shape, logprobs.shape, next_states.shape, self.next_values.shape)
         
         total_loss = self.loss_fn.get_loss(
-                                        batches=bathes
+                                        batches=bathes,
+                                        loss_type=self.cfg.loss_fn,
                                         )
         
         # total_loss.requires_grad_(True)

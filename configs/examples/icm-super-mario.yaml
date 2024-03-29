@@ -1,0 +1,69 @@
+# Environment
+env_type: 'gym' # gym, custom
+env_name: 'CartPole-v1' # if custom anyname is OK
+env_name: 'Freeway-ram-v0' # if custom anyname is OK
+env_name: 'SuperMarioBros' ## if custom anyname is OK
+
+# Preprocessing
+resize_scale: [42,42] ##
+gray_scale: True ##
+multi_states_size: 3 ## 
+
+# Network
+nn_mod: 'icm' ## must match with network_models filename
+network_models: ['Qnetwork', 'Phi', 'Gnet', 'Fnet'] ##
+loss_fn: 'icm' ## actor-critic, dist-cross-entropy, icm
+q_loss: 'mse' ##
+forward_loss: 'mse' ##
+inverse_loss: 'cross-entropy' ##
+action_space: 3 ##
+
+# Train
+optimizer: 'adam' ##
+# learning_rate: 3.e-3 # for no target nn SGD
+# learning_rate: 6.e-4 # for no target nn
+learning_rate: 1.e-3 ## for target nn
+epochs: 2000 ##
+multi_procs: False ## use multi processing
+num_multi_procs: 1 ##
+
+# Episode
+ep_lim: True ## episode 'n step' mode
+ignore_done: True ## prior than ep_lim, using with emax_ep_len
+epbuff_size: 200 ## 500 can contain success experience
+reset_epbuff: True ##
+exp_priority: True ## experience priority
+priority_level: 5 ## default 5
+additional_act_repeats: 5 ##
+max_ep_try: 100
+progress_thres: 15
+
+# Agent
+## run
+prob_q: False ## wheter q value is distributed probability for vqlue_nn
+policy: 'mix' ## greedy, softmax, mix
+greedy_thr_rate: 0.3 ## rate. only for policy mix 
+epsilon: 0.2 ##
+epsilon_min: 0.05 ##
+epsilon_thrs: 200 ##
+
+## update parameter
+flip_res: False # 
+test_interval: 100
+sampled_batch: True # with shuffling
+batch_size: 50
+target_nn: True # for value fn, retarded loss reduction and training
+t_update: 25 # for value fn
+
+
+# Dist DQN
+dist_network_dim: [128, 100, 25, 51] # in network
+dist_gamma: 0.8 # in agent
+bootstrap: False # in agent, False more stable
+support_div: 51 # in utils
+dist_support_limit: [-10., 10.] # in utils
+
+
+
+
+

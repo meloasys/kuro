@@ -20,6 +20,12 @@ class Config:
                 setattr(self, k, True)
             else:
                 setattr(self, k, False)
+        if self.value_nn:
+            if hasattr(self, 'prob_q'):
+                pass
+            else:
+                raise ValueError('prob_q should be included in config file for value_nn')
+        
 
 if __name__ == '__main__':
     import dotenv, os

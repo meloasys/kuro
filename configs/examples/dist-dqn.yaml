@@ -10,7 +10,7 @@ epochs: 2000
 flip_res: False # 
 multi_procs: False
 num_multi_procs: 1
-loss_fn: 'cross-entropy' # actor-critic, cross-entropy
+loss_fn: 'dist-cross-entropy' # actor-critic, dist-cross-entropy
 state_norm: True
 test_interval: 100
 target_nn: True # shows stable loss reduction, non target and non bootstrap may incur no train
@@ -33,8 +33,8 @@ dist_gamma: 0.8
 action_space: 3
 
 # exploration
-greedy: True
-softmax: False # find it in episode
+prob_q: True # wheter q value is distributed probability for vqlue_nn
+policy: 'greedy' #greedy, softmax, mix
 epsilon: 0.2
 epsilon_min: 0.05
 epsilon_thrs: 200

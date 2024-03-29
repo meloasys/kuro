@@ -9,6 +9,8 @@ class Environment:
         self.reward = None
 
     def get_reward(self, done, reward):
+        self.reward = reward
+        self.rep_priority = False
         if self.cfg.env_type=='gym':
             if self.cfg.env_name=='CartPole-v1':
                 if done:
@@ -36,7 +38,15 @@ class Environment:
         cls.env = None
         cls.cfg = cfg
         if cls.cfg.env_type=='gym':
-            cls.env = gym.make(cls.cfg.env_name)
+            if 'SuperMario' in cls.cfg.env_name:
+                from nes_py.wrappers import JoypadSpace
+                import gym_super_mario_bros
+                from gym_super_mario_bros.actions import COMPLEX_MOVEMENT
+                cls.env = gym_super_mario_bros.make(cls.cfg.env_name)
+                cls.env = JoypadSpace(cls.env, COMPLEX_MOVEMENT)
+            else:    
+                cls.env = gym.make(cls.cfg.env_name)
+
         if cls.cfg.env_type=='custom':
             print('[info] You choose custom environment')
     

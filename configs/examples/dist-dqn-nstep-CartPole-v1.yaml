@@ -6,7 +6,7 @@ env_name: 'CartPole-v1' # if custom anyname is OK
 # Network
 nn_mod: 'dist_dqn' # must match with network_models counts
 network_models: ['DistDQN']
-loss_fn: 'cross-entropy' # actor-critic, cross-entropy
+loss_fn: 'dist-cross-entropy' # actor-critic, dist-cross-entropy
 action_space: 2
 
 # Train
@@ -18,8 +18,8 @@ num_multi_procs: 1
 
 # Agent
 ## run
-greedy: True
-softmax: False # in Episode
+prob_q: True # wheter q value is distributed probability for vqlue_nn
+policy: 'greedy' #greedy, softmax, mix
 epsilon: 0.2 # in Episode
 epsilon_min: 0.05 # in Episode
 epsilon_thrs: 200 # in Episode
