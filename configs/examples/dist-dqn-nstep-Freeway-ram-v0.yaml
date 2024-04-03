@@ -28,6 +28,7 @@ epsilon_thrs: 200 # in Episode
 ## update parameter
 flip_res: False # 
 test_interval: 100
+test_qty: 10
 sampled_batch: True # with shuffling
 batch_size: 50
 target_nn: True # for value fn, retarded loss reduction and training

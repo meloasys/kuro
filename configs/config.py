@@ -5,7 +5,8 @@ class Config:
     def __init__(self):
         self.cfg_root = os.getenv('CFG_ROOT')
         cfg_name = os.getenv('CFG_NAME')
-        print('###################### Config root and name:', self.cfg_root, cfg_name)
+        print('###################### Config root and name:', 
+                                        self.cfg_root, cfg_name)
         dir = Path(self.cfg_root)/cfg_name
         with open(dir) as f:
             config = yaml.load(f,Loader=yaml.FullLoader)
@@ -24,7 +25,8 @@ class Config:
             if hasattr(self, 'prob_q'):
                 pass
             else:
-                raise ValueError('prob_q should be included in config file for value_nn')
+                raise ValueError('prob_q should be included \
+                                in config file for value_nn')
         
 
 if __name__ == '__main__':

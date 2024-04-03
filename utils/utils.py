@@ -46,19 +46,19 @@ def prepare_initial_state(state, cfg):
     return tmp
 
 def get_info(cfg, info):
-    if cfg.env_name == 'SuperMarioBros':
+    if 'SuperMarioBros' in cfg.env_name:
         last_pos = info['x_pos']
         return last_pos
     return
 
 def eval_ep(cfg, info, additional_info):
-    if cfg.env_name == 'SuperMarioBros':
-        if (info['x_pos'] - additional_info) < cfg.progress_thres:
-            done = True
+    if 'SuperMarioBros' in cfg.env_name:
+        if abs(info['x_pos'] - additional_info) < cfg.progress_thres:
+            penalty = True
         else:
-            done = False
+            penalty = False
             additional_info = info['x_pos']
-        res = (done, additional_info)
+        res = (penalty, additional_info)
     return res
 
 

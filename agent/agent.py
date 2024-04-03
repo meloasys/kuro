@@ -37,11 +37,11 @@ class RLagent:
         eplen_avg = 0
         success_avg = 0
         reward_avg = 0
-        # for i in tqdm(range(10)):
-        for i in range(10):
+        for i in tqdm(range(self.cfg.test_qty)):
+        # for i in range(2):
             results = self.ep.run(
                         self.nn_network,
-                        self.env,
+                        # self.env,
                         self.cfg,
                         self.epochs,
                         self.cfg.epsilon,
@@ -69,7 +69,7 @@ class RLagent:
         self.epochs += 1
         results = self.ep.run(
                     self.nn_network,
-                    self.env,
+                    # self.env,
                     self.cfg,
                     self.epochs,
                     self.cfg.epsilon,
@@ -123,36 +123,22 @@ class RLagent:
             states.flip(dims=(0,))
             next_states.flip(dims=(0,))
         
+        batch_pack = (values, actions, logprobs, rewards, dones, states, next_states)
+
         if self.cfg.policy_value_nn:
             self.returns = self.get_returns(dones, values, rewards)
             values = torch.nn.functional.normalize(values, dim=0)
-            bathes = (values, logprobs, self.returns)
+            train_batch = (values, logprobs, self.returns)
         elif self.cfg.policy_nn:
             pass # TBD
         elif self.cfg.value_nn:
-            # with torch.no_grad():
-            values = self.nn_network(states.detach())
-            
-            if self.cfg.target_nn: 
-                self.next_values = self.nn_network_t(next_states.detach())
-            else:
-                self.next_values = self.nn_network(next_states.detach())
-            
-            support = utils.get_support(self.cfg)
-            self.target_dist = self.get_target_dist(
-                                            self.next_values.detach(),
-                                            actions,
-                                            rewards,
-                                            support)
-            bathes = (values, self.target_dist.detach())
-
+            train_batch = self.make_batch(batch_pack)
         # print(values.shape, actions.shape, rewards.shape, logprobs.shape, next_states.shape, self.next_values.shape)
-        
+
         total_loss = self.loss_fn.get_loss(
-                                        batches=bathes,
+                                        batches=train_batch,
                                         loss_type=self.cfg.loss_fn,
                                         )
-        
         # total_loss.requires_grad_(True)
         total_loss.backward()
         self.optimizer.step()
@@ -161,8 +147,44 @@ class RLagent:
                 and (self.epochs % self.cfg.t_update == 0):
             self.nn_network_t.load_state_dict(
                                     self.nn_network.state_dict())
-
         return total_loss
+
+        
+    def make_batch(self, batch_pack):
+        values, actions, logprobs, rewards, dones, states, next_states = batch_pack
+        if self.cfg.nn_mod == 'dist_dqn':
+            # stable learning than using forward passed values in episode
+            values = self.nn_network(states.detach())
+            if self.cfg.target_nn: 
+                self.next_values = self.nn_network_t(next_states.detach())
+            else:
+                self.next_values = self.nn_network(next_states.detach())
+            support = utils.get_support(self.cfg)
+            self.target_dist = self.get_target_dist(
+                                        self.next_values.detach(),
+                                        actions,
+                                        rewards,
+                                        support)
+            train_batch = (values, self.target_dist.detach())
+        elif self.cfg.nn_mod == 'icm':
+            encoder = self.nn_other_net[self.cfg.network_models[1]]
+            inverse_model = self.nn_other_net[self.cfg.network_models[2]]
+            forward_model = self.nn_other_net[self.cfg.network_models[3]]
+
+            # print(torch.sum(list(inverse_model.parameters())[0]))
+
+            state1_hat = encoder(states)
+            state2_hat = encoder(next_states)
+            state2_hat_pred = forward_model(state1_hat.detach(), actions.detach())
+            pred_action = inverse_model(state1_hat, state2_hat)
+            qvals = self.nn_network(states)
+            qvals_next = self.nn_network(next_states)
+
+            train_batch = (states, next_states, state1_hat, state2_hat, state2_hat_pred, 
+                           actions, pred_action, qvals, qvals_next, rewards)
+
+        return train_batch
+
 
     def get_returns(self, done_batch, value_batch, reward_batch):
         '''for ActorCritic model'''
@@ -238,5 +260,4 @@ class RLagent:
         vmax = self.cfg.dist_support_limit[1]
         dz = (vmax - vmin) / (nsup - 1.)
         return nsup, vmin, vmax, dz
-    
 

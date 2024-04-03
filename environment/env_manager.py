@@ -30,6 +30,14 @@ class Environment:
                     self.reward = -1
                 else:
                     self.reward = reward
+            elif self.cfg.env_name=='SuperMarioBros-v0':
+                if done:
+                    self.reward = -15
+                elif reward > 5:
+                    self.rep_priority = True
+                elif reward == 0:
+                    self.reward = -1
+
 
         return self.reward, self.rep_priority
 

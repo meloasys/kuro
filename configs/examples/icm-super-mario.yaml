@@ -2,7 +2,7 @@
 env_type: 'gym' # gym, custom
 env_name: 'CartPole-v1' # if custom anyname is OK
 env_name: 'Freeway-ram-v0' # if custom anyname is OK
-env_name: 'SuperMarioBros' ## if custom anyname is OK
+env_name: 'SuperMarioBros-v0' ## if custom anyname is OK
 
 # Preprocessing
 resize_scale: [42,42] ##
@@ -11,50 +11,60 @@ multi_states_size: 3 ##
 
 # Network
 nn_mod: 'icm' ## must match with network_models filename
-network_models: ['Qnetwork', 'Phi', 'Gnet', 'Fnet'] ##
+network_models: ['Qnetwork', 'Phi', 'Gnet', 'Fnet'] ## must follow order of Qval, encoder, inverse, forward
 loss_fn: 'icm' ## actor-critic, dist-cross-entropy, icm
 q_loss: 'mse' ##
 forward_loss: 'mse' ##
 inverse_loss: 'cross-entropy' ##
-action_space: 3 ##
+action_space: 12 ##
 
 # Train
 optimizer: 'adam' ##
 # learning_rate: 3.e-3 # for no target nn SGD
 # learning_rate: 6.e-4 # for no target nn
-learning_rate: 1.e-3 ## for target nn
-epochs: 2000 ##
+learning_rate: 1.e-4 ## for target nn
+epochs: 5000 ##
 multi_procs: False ## use multi processing
 num_multi_procs: 1 ##
 
 # Episode
 ep_lim: True ## episode 'n step' mode
 ignore_done: True ## prior than ep_lim, using with emax_ep_len
-epbuff_size: 200 ## 500 can contain success experience
-reset_epbuff: True ##
+epbuff_size: 1000 ## 500 can contain success experience
+reset_epbuff: False ##
 exp_priority: True ## experience priority
 priority_level: 5 ## default 5
-additional_act_repeats: 5 ##
+additional_act_repeats: 4 ##
 max_ep_try: 100
-progress_thres: 15
+progress_thres: 5
+penalty_thres: 20
+buff_headroom: 10 # additional looping with full buffer 
 
 # Agent
 ## run
 prob_q: False ## wheter q value is distributed probability for vqlue_nn
-policy: 'mix' ## greedy, softmax, mix
-greedy_thr_rate: 0.3 ## rate. only for policy mix 
+policy: 'mix' ## greedy, softmax, mix 
+greedy_thr_rate: 0.3 ## rate to change to greedy against epoch
 epsilon: 0.2 ##
-epsilon_min: 0.05 ##
-epsilon_thrs: 200 ##
+epsilon_min: 0.18 ##
+epsilon_thrs: 1000 ##
 
 ## update parameter
 flip_res: False # 
-test_interval: 100
+test_interval: 5000
+test_qty: 1
 sampled_batch: True # with shuffling
-batch_size: 50
-target_nn: True # for value fn, retarded loss reduction and training
+batch_size: 150
+target_nn: False # for value fn, retarded loss reduction and training
 t_update: 25 # for value fn
-
+forward_scale: 1. ## loss
+inverse_scale: 1.e+4 ## loss
+eta: 1. ## intrinsic reward weight (0~1)
+use_extrinsic: True ## using rewards from episode
+gamma: 0.9 ## t+1 qval weight on rewards
+qloss_scale: 1.e+5 ## expansion of q_loss
+beta: 0.2 ## mix rate for forward loss and inverse loss 
+lambda_: 0.1 # weight of Q loss
 
 # Dist DQN
 dist_network_dim: [128, 100, 25, 51] # in network

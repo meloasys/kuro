@@ -41,7 +41,7 @@ def train(proc_no, cfg, nn_cls_init, counter):
     optimizer.zero_grad()
     loss_fn = LossFn(cfg)
 
-    episode_ = episode(cfg)
+    episode_ = episode(cfg, env)
     # create agent class
     agent_ = RLagent(
                 nn_network=nn_cls_init,
@@ -56,8 +56,8 @@ def train(proc_no, cfg, nn_cls_init, counter):
     fname = 't_' + cfg.nn_mod + '_' + dt
     os.makedirs('run/'+fname, exist_ok=True)
     losses = []
-    # for i in tqdm(range(cfg.epochs)):
-    for i in range(cfg.epochs):
+    for i in tqdm(range(cfg.epochs)):
+    # for i in range(cfg.epochs):
         # train agent class
         loss = agent_.run_update()
         losses.append(loss)

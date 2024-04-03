@@ -13,6 +13,7 @@ num_multi_procs: 1
 loss_fn: 'dist-cross-entropy' # actor-critic, dist-cross-entropy
 state_norm: True
 test_interval: 100
+test_qty: 1
 target_nn: True # shows stable loss reduction, non target and non bootstrap may incur no train
 # t_update: 25 
 t_update: 10
