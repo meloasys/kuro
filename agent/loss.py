@@ -79,20 +79,28 @@ class LossFn(Loss):
             loss = loss_ \
                     + self.cfg.lambda_ * _q_loss
             return loss
-
+        
+        elif loss_type == 'multihead_attn':
+            targets, qvals, actions = batches
+            y_hat = qvals.gather(dim=1,
+                                 index=actions.unsqueeze(dim=1)
+                                 ).squeeze()
+            y = targets.detach()
+            batches = (y_hat, y)
+            return self.get_loss(batches, 'mse')
         
         elif loss_type == 'cross-entropy':
-            y, y_hat = batches
+            y_hat, y = batches
             # print(batches)
-            return self.cross_entropy(y, y_hat)
+            return self.cross_entropy(y_hat, y)
         
         elif loss_type == 'mse':
-            y, y_hat = batches
+            y_hat, y = batches
             if args != (): 
                 if args[0] == 'non_reduction':
-                    return self.mse_non_reduction(y, y_hat)
+                    return self.mse_non_reduction(y_hat, y)
             else:
-                return self.mse(y, y_hat)
+                return self.mse(y_hat, y)
         
 
 if __name__ == "__main__":

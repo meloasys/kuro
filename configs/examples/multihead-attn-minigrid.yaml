@@ -1,0 +1,65 @@
+# Environment
+env_type: 'gym' # gym, custom
+env_name: 'MiniGrid-DoorKey-5x5-v0' ## if custom anyname is OK
+max_steps: 400
+
+# Preprocessing
+resize_scale: [42,42] ##
+gray_scale: True ##
+# multi_states_size: 3 ## 
+
+# Network
+nn_mod: 'multihead_attn' ## must match with network_models filename
+network_models: ['MultiHeadRelationalModule'] ##
+loss_fn: 'multihead_attn' ## actor-critic, dist-cross-entropy, icm
+q_loss: 'mse' ##
+action_space: 5 ##
+
+# Train
+optimizer: 'adam' ##
+# learning_rate: 3.e-3 # for no target nn SGD
+# learning_rate: 6.e-4 # for no target nn
+learning_rate: 5.e-4 ## for target nn
+epochs: 5000 ##
+multi_procs: False ## use multi processing
+num_multi_procs: 1 ##
+
+# Episode
+ep_lim: True ## episode 'n step' mode
+ignore_done: True ## prior than ep_lim, using with emax_ep_len
+epbuff_size: 50 ##
+reset_epbuff: False ##
+exp_priority: True ## experience priority
+priority_level: 5 ## default 5
+max_ep_try: 100
+progress_thres: 5
+penalty_thres: 20
+buff_headroom: 10 # additional looping with full buffer 
+action_map:
+  0: 0
+  1: 1
+  2: 2
+  3: 3
+  4: 5
+
+# Agent
+## run
+prob_q: False ## wheter q value is distributed probability for vqlue_nn
+policy: 'greedy' ## greedy, softmax, mix 
+greedy_thr_rate: 0.3 ## rate to change to greedy against epoch
+epsilon: 0.5 ##
+epsilon_min: 0.18 ##
+epsilon_thrs: 1000 ##
+
+## update parameter
+flip_res: False # 
+test_interval: 5000
+test_qty: 1
+sampled_batch: True # with shuffling
+batch_size: 50 #
+target_nn: True # for value fn, retarded loss reduction and training
+t_update: 100 # for value fn
+gamma: 0.99 #
+
+
+

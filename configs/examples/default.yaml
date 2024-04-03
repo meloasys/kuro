@@ -1,4 +1,4 @@
 # ONLY for list of network type
 policy_value_nn: ['actor_critic_nn']
 policy_nn: ['']
-value_nn: ['dist_dqn', 'icm']
+value_nn: ['dist_dqn', 'icm', 'multihead_attn']

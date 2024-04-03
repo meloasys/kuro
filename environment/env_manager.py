@@ -52,6 +52,12 @@ class Environment:
                 from gym_super_mario_bros.actions import COMPLEX_MOVEMENT
                 cls.env = gym_super_mario_bros.make(cls.cfg.env_name)
                 cls.env = JoypadSpace(cls.env, COMPLEX_MOVEMENT)
+            elif 'MiniGrid-DoorKey' in cls.cfg.env_name:
+                # from gym_minigrid.minigrid import *
+                from gym_minigrid.wrappers import FullyObsWrapper, ImgObsWrapper
+                cls.env = ImgObsWrapper(gym.make(cls.cfg.env_name))
+                cls.env.max_steps = cls.cfg.max_steps
+                cls.env.env.max_steps = cls.cfg.max_steps
             else:    
                 cls.env = gym.make(cls.cfg.env_name)
 

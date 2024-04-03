@@ -182,6 +182,19 @@ class RLagent:
 
             train_batch = (states, next_states, state1_hat, state2_hat, state2_hat_pred, 
                            actions, pred_action, qvals, qvals_next, rewards)
+            
+        elif self.cfg.nn_mod == 'multihead_attn':
+            qvals = self.nn_network(next_states)
+            astar = torch.argmax(qvals, dim=1)
+            qvals_t = self.nn_network_t(next_states.detach())
+            qs = qvals_t.gather(dim=1, 
+                                index=astar.unsqueeze(dim=1)
+                                ).squeeze()
+
+            targets = torch.tensor(rewards + (1-dones.numpy()) * self.cfg.gamma,
+                                   dtype=torch.float32) * qs.detach()
+
+            train_batch = (targets, qvals, actions)
 
         return train_batch
 

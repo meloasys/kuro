@@ -35,6 +35,8 @@ class episode:
         
         if 'SuperMarioBros' in cfg.env_name:
             self.state = utils.prepare_initial_state(self.state, cfg)
+        elif 'MiniGrid-DoorKey' in cfg.env_name:
+            self.state = utils.prepare_state(self.state, cfg)
 
         return self.state
 
@@ -135,32 +137,60 @@ class episode:
                     action = self.get_action(value.detach(), cfg)
                 if isinstance(action, list):
                     action = action[0]
+                
+                if hasattr(cfg, 'action_map'):
+                    action_ = utils.action_map(action,cfg)
+
+
             if self.ep_length > 1:
                 additional_info = utils.get_info(cfg, self.info) # Value type
             state_next, reward, done, self.info, _ = self.env.step(
-                                                int(action.detach().numpy()))
+                                                int(action_.detach().numpy())
+                                                if hasattr(cfg, 'action_map') else
+                                                int(action.detach().numpy())
+                                                )
             # self.state = torch.from_numpy(state_next).float()
             reward, rep_priority = env_mng.get_reward(done, reward)
 
-            if not done and hasattr(cfg, 'additional_act_repeats'):
-                for i in range(cfg.additional_act_repeats):
-                    additional_info = utils.get_info(cfg, self.info)
-                    state_next, reward_, done, self.info, _ = self.env.step(
-                                                        int(action.detach().numpy()))
-                    reward, rep_priority = env_mng.get_reward(done, reward)     
-                    if done:
-                        break
-                    reward += reward_
-                    self.state = utils.prepare_multi_state(self.state, state_next, cfg)
-                
 
-            #########################$#@$#@$#@$@#$#$#############################
-            if hasattr(cfg, 'multi_states_size'):
-                if cfg.multi_states_size > 1:
-                    state_next = torch.from_numpy(state_next.copy()).float()
-                    state_next = utils.prepare_multi_state(self.state, state_next, cfg)
- 
-            #########################$#@$#@$#@$@#$#$#############################
+            ######################### for mario #############################
+            # to make it common using later with queue append
+            if 'SuperMarioBros' in cfg.env_name:
+                if not done and hasattr(cfg, 'additional_act_repeats'):
+                    for i in range(cfg.additional_act_repeats):
+                        additional_info = utils.get_info(cfg, self.info)
+                        state_next, reward_, done, self.info, _ = self.env.step(
+                                                            int(action.detach().numpy()))
+                        reward, rep_priority = env_mng.get_reward(done, reward)     
+                        if done:
+                            break
+                        reward += reward_
+                        if hasattr(cfg, 'multi_states_size') and \
+                            i < (cfg.additional_act_repeats-1):
+                            self.state = utils.prepare_multi_state(self.state, state_next, cfg)
+                if hasattr(cfg, 'multi_states_size'):
+                    if cfg.multi_states_size > 1:
+                        state_next = torch.from_numpy(state_next.copy()).float()
+                        state_next = utils.prepare_multi_state(self.state, state_next, cfg)
+                if hasattr(cfg, 'max_ep_try') and self.ep_length > cfg.max_ep_try and train_mode:
+                    ep_res = utils.eval_ep(cfg, self.info, additional_info) # list
+                    if 'SuperMarioBros' in cfg.env_name:
+                        penalty, additional_info = ep_res
+                        # if reward < 0:
+                        #     penalty = True
+                        # else:
+                        #     penalty = False
+                        if penalty:
+                            self.penalty += 1
+                        else:
+                            self.penalty = 0
+                        if self.penalty > cfg.penalty_thres:
+                            done = True
+                        # print(self.ep_length, self.penalty, done)
+            #################################################################
+
+            if 'MiniGrid-DoorKey' in cfg.env_name:
+                state_next = utils.prepare_state(torch.Tensor(state_next), cfg)
 
             exprience = dict(
                         value=value, 
@@ -172,23 +202,6 @@ class episode:
                         logprob=self.logprob_,
                         done=done, 
                         )
-            
-            if hasattr(cfg, 'max_ep_try') and self.ep_length > cfg.max_ep_try and train_mode:
-                ep_res = utils.eval_ep(cfg, self.info, additional_info) # list
-                if 'SuperMarioBros' in cfg.env_name:
-                    penalty, additional_info = ep_res
-                    # if reward < 0:
-                    #     penalty = True
-                    # else:
-                    #     penalty = False
-                    if penalty:
-                        self.penalty += 1
-                    else:
-                        self.penalty = 0
-                    if self.penalty > cfg.penalty_thres:
-                        done = True
-                    # print(self.ep_length, self.penalty, done)
-            
 
             
             if rep_priority:
@@ -208,6 +221,8 @@ class episode:
                 
             else:
                 self.state = torch.tensor(state_next, dtype=torch.float32)
+                # if 'MiniGrid-DoorKey' in cfg.env_name:
+                #     self.state = utils.prepare_state(self.state, cfg)
 
             self.cum_reward += reward
             del reward
