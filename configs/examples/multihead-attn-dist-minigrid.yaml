@@ -10,14 +10,18 @@ max_steps: 4000
 nn_mod: 'multihead_attn' ## must match with network_models filename
 network_models: ['MultiHeadRelationalModule'] ##
 loss_fn: 'multihead_attn' ## actor-critic, dist-cross-entropy, icm
-q_loss: 'mse' ##
+# q_loss: 'mse' ##
 action_space: 5 ##
+support_div: 4 # in utils
+batch_size: 3 #
+support_div: 16 # in utils
+batch_size: 50 #
 
 # Train
 optimizer: 'adam' ##
 # learning_rate: 3.e-3 # for no target nn SGD
 # learning_rate: 6.e-4 # for no target nn
-learning_rate: 5.e-4 ## for target nn
+learning_rate: 5.e-5 ## for target nn
 epochs: 50000 ##
 multi_procs: False ## use multi processing
 num_multi_procs: 1 ##
@@ -40,11 +44,11 @@ batch_priority: True
 
 # Agent
 ## run
-prob_q: False ## wheter q value is distributed probability for vqlue_nn
+prob_q: True ## wheter q value is distributed probability for vqlue_nn
 policy: 'greedy' ## greedy, softmax, mix 
 greedy_thr_rate: 0.3 ## rate to change to greedy against epoch
 epsilon: 0.5 ##
-epsilon_min: 0.49 ##
+epsilon_min: 0.4999 ##
 epsilon_thrs: 1000 ##
 
 ## update parameter
@@ -52,11 +56,13 @@ flip_res: False #
 test_interval: 4999
 test_qty: 30
 sampled_batch: True # with shuffling
-batch_size: 50 #
 target_nn: True # for value fn, retarded loss reduction and training
 t_update: 100 # for value fn
 gamma: 0.99 #
 clipping: False
+trans_tau: False # loss
+delta: 1.0 # loss
 
+dist_support_limit: [0.0001, 0.9999] # in utils
 
 

@@ -1,6 +1,9 @@
 *.ipynb
 archive
 run
+tensorboard
+test*
+
 
 
 # Byte-compiled / optimized / DLL files

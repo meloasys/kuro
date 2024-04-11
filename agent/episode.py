@@ -4,6 +4,7 @@ from collections import deque
 from environment import env_manager
 from utils import utils
 import torch.nn.functional as F
+import copy
 
 
 class episode:
@@ -54,6 +55,9 @@ class episode:
                                         for a in range(pred.shape[1])]  
                     action_ = torch.tensor(np.argmax(expectations))
                     action.append(action_)
+                # action_ = torch.argmax(pred.mean(dim=2))
+                # action.append(torch.Tensor([action_]).int())
+
             else:
                 for b in range(pred.shape[0]):
                     action_ = torch.argmax(pred)
@@ -69,10 +73,10 @@ class episode:
             self.__init__(cfg, self.env)
         if train_mode==False:
             self.state = self.reset_env(cfg)
+            self.ep_length = 0
 
         cfg.epsilon = epsilon
         done = False
-        # self.ep_length = 0
         self.success_cnt = 0
         self.cum_reward = 0
         self.loop_count = 0
@@ -87,6 +91,8 @@ class episode:
 
         looper = True
         while looper:
+            # print(self.loop_count)
+            ep_length_ = copy.copy(self.ep_length)
             self.ep_length += 1
             self.loop_count += 1
             if cfg.policy_value_nn:
@@ -98,6 +104,7 @@ class episode:
                 policy = self.nn_model(self.state)
                 action = self.get_action(policy, cfg)
             elif cfg.value_nn:
+                # print(self.state.unsqueeze(dim=0).shape)
                 value = self.nn_model(self.state.unsqueeze(dim=0))
                 # print(self.state.shape, value.shape)
                 if cfg.policy == 'greedy':
@@ -142,8 +149,6 @@ class episode:
                     action_ = utils.action_map(action,cfg)
 
 
-            if self.ep_length > 1:
-                additional_info = utils.get_info(cfg, self.info) # Value type
             state_next, reward, done, self.info, _ = self.env.step(
                                                 int(action_.detach().numpy())
                                                 if hasattr(cfg, 'action_map') else
@@ -156,6 +161,8 @@ class episode:
             ######################### for mario #############################
             # to make it common using later with queue append
             if 'SuperMarioBros' in cfg.env_name:
+                if self.ep_length > 1:
+                    additional_info = utils.get_info(cfg, self.info) # Value type
                 if not done and hasattr(cfg, 'additional_act_repeats'):
                     for i in range(cfg.additional_act_repeats):
                         additional_info = utils.get_info(cfg, self.info)
@@ -205,7 +212,7 @@ class episode:
 
             
             if rep_priority:
-                # print(f'pass episode! at epochs{epochs} done _ {done} len_ep __ {self.ep_length}')
+                # print(f'pass episode! {train_mode}at epochs{epochs} done _ {done} len_ep __ {self.ep_length}')
                 self.success_cnt += 1
             if train_mode:
                 self.ep_buffer.append(exprience)
@@ -216,8 +223,10 @@ class episode:
 
             if done:
                 self.state = self.reset_env(cfg)
-                self.ep_length = 0
                 self.penalty = 0
+                if train_mode:
+                    ep_length_ = copy.copy(self.ep_length)
+                    self.ep_length = 0
                 
             else:
                 self.state = torch.tensor(state_next, dtype=torch.float32)
@@ -243,20 +252,35 @@ class episode:
             if cfg.ignore_done and train_mode:
                 if len(self.ep_buffer)<cfg.epbuff_size:
                     looper = True
-                else:
+                else: # len(self.ep_buffer) == cfg.epbuff_size
                     if self.loop_count < cfg.buff_headroom:
                         looper = True
                     else:
                         looper = False
+            
+            if hasattr(cfg, 'batch_priority') and cfg.batch_priority and train_mode:
+                if self.loop_count < cfg.buff_headroom \
+                    or len(self.ep_buffer) < cfg.batch_size:
+                    looper = True
+                else:
+                    looper = False
+            
+            # if self.ep_length % 200 == 0:
+            #     print(done, self.ep_length, train_mode, self.env.max_steps, self.env.env.max_steps)
+            # self.env.max_steps = cfg.max_steps
+            # self.env.env.max_steps = cfg.max_steps
+
 
             # print(self.loop_count, len(self.ep_buffer))
             if not train_mode:
                 if done:
                     looper = False
+                if self.ep_length > 400:
+                    looper = False
 
             # self.env.render()
         results = dict(
-                    ep_length=self.ep_length,
+                    ep_length=ep_length_,
                     ep_buffer=self.ep_buffer,
                     success_cnt=self.success_cnt,
                     cum_reward=self.cum_reward,

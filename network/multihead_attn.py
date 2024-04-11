@@ -5,6 +5,7 @@ from einops import rearrange
 class MultiHeadRelationalModule(torch.nn.Module):
     def __init__(self, input_size, config):
         super(MultiHeadRelationalModule, self).__init__()
+        self.cfg = config
         self.conv1_ch = 16 
         self.conv2_ch = 20
         self.conv3_ch = 24
@@ -37,7 +38,12 @@ class MultiHeadRelationalModule(torch.nn.Module):
         
         self.linear1 = nn.Linear(self.n_heads * self.node_size, self.node_size)
         self.norm1 = nn.LayerNorm([self.N,self.node_size], elementwise_affine=False)
-        self.linear2 = nn.Linear(self.node_size, self.out_dim)
+        if self.cfg.prob_q:
+            self.linear2 = nn.Linear(self.node_size, 
+                                     self.cfg.support_div * self.cfg.action_space
+                                     )
+        else:
+            self.linear2 = nn.Linear(self.node_size, self.out_dim)
     
     def forward(self,x):
         N, Cin, H, W = x.shape
@@ -76,6 +82,11 @@ class MultiHeadRelationalModule(torch.nn.Module):
         E = torch.relu(E)
         E = self.norm1(E)
         E = E.max(dim=1)[0]
-        y = self.linear2(E)
-        y = torch.nn.functional.elu(y)
+        if self.cfg.prob_q:
+            y = self.linear2(E)
+            y = torch.nn.functional.elu(y)
+            y = y.view(y.shape[0], self.cfg.action_space, self.cfg.support_div)
+        else:
+            y = self.linear2(E)
+            y = torch.nn.functional.elu(y)
         return y

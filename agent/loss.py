@@ -1,6 +1,8 @@
 import torch
 from torch import nn
 import torch.nn.functional as F
+from utils import utils
+import numpy as np
 
 class Loss:
     def __init__(self) -> None:
@@ -15,6 +17,7 @@ class LossFn(Loss):
         self.mse_non_reduction = nn.MSELoss(reduction='none')
         self.mse = nn.MSELoss()
         self.cross_entropy = nn.CrossEntropyLoss(reduction='none')
+        self.huber = nn.HuberLoss(reduction='none')
 
 
 
@@ -82,12 +85,38 @@ class LossFn(Loss):
         
         elif loss_type == 'multihead_attn':
             targets, qvals, actions = batches
-            y_hat = qvals.gather(dim=1,
-                                 index=actions.unsqueeze(dim=1)
-                                 ).squeeze()
-            y = targets.detach()
-            batches = (y_hat, y)
-            return self.get_loss(batches, 'mse')
+
+            if self.cfg.prob_q:
+
+                qvals = torch.nn.functional.normalize(qvals, dim=1)
+                targets = torch.nn.functional.normalize(targets, dim=1)
+
+                if torch.sum((targets > 1).float()) > 0:
+                    print(targets)
+
+                td_err = targets - qvals
+                # huber loss
+                huber_loss = F.huber_loss(qvals, targets, 
+                                          reduction='none', delta=self.cfg.delta)
+                tau = utils.get_support(self.cfg)
+                tau = tau.repeat(qvals.shape[0], 1)
+                if hasattr(self.cfg, 'trans_tau') and self.cfg.trans_tau:
+                    q_idx = torch.argsort(qvals, dim=1)
+                    tau = tau.take(q_idx)
+                
+                quantil_loss = abs(tau - torch.tensor(td_err.detach() < 0, dtype=torch.float32)) \
+                                    * huber_loss
+                loss = torch.div(quantil_loss.sum(), self.cfg.support_div)
+
+            else: 
+                y_hat = qvals.gather(dim=1,
+                                    index=actions.unsqueeze(dim=1).type(torch.int64) 
+                                    ).squeeze()
+                y = targets.detach()
+                batches = (y_hat, y)
+                loss = self.get_loss(batches, 'mse')
+
+            return loss
         
         elif loss_type == 'cross-entropy':
             y_hat, y = batches

@@ -37,7 +37,11 @@ class Environment:
                     self.rep_priority = True
                 elif reward == 0:
                     self.reward = -1
-
+            elif 'MiniGrid-DoorKey' in self.cfg.env_name:
+                if reward > 0:
+                    self.rep_priority = True
+                elif reward == 0:
+                    self.reward = -0.01
 
         return self.reward, self.rep_priority
 
@@ -55,9 +59,10 @@ class Environment:
             elif 'MiniGrid-DoorKey' in cls.cfg.env_name:
                 # from gym_minigrid.minigrid import *
                 from gym_minigrid.wrappers import FullyObsWrapper, ImgObsWrapper
-                cls.env = ImgObsWrapper(gym.make(cls.cfg.env_name))
-                cls.env.max_steps = cls.cfg.max_steps
-                cls.env.env.max_steps = cls.cfg.max_steps
+
+                cls.env = ImgObsWrapper(gym.make(cls.cfg.env_name, max_steps=cls.cfg.max_steps))
+                # cls.env.max_steps = cls.cfg.max_steps
+                # cls.env.env.max_steps = cls.cfg.max_steps
             else:    
                 cls.env = gym.make(cls.cfg.env_name)
 

@@ -83,7 +83,7 @@ class RLagent:
             dec /= 1e3
             self.cfg.epsilon -= dec
 
-        return loss.item()
+        return loss.item(), results
     
 
     def update_params(self, results):
@@ -141,6 +141,8 @@ class RLagent:
                                         )
         # total_loss.requires_grad_(True)
         total_loss.backward()
+        if self.cfg.clipping:
+            torch.nn.utils.clip_grad_norm_(self.nn_network.parameters(), max_norm=1.0)
         self.optimizer.step()
 
         if self.cfg.target_nn \
@@ -184,16 +186,50 @@ class RLagent:
                            actions, pred_action, qvals, qvals_next, rewards)
             
         elif self.cfg.nn_mod == 'multihead_attn':
-            qvals = self.nn_network(next_states)
-            astar = torch.argmax(qvals, dim=1)
+
+            # print(actions.shape, rewards.shape, dones.shape, states.shape, next_states.shape)
+
+            qvals = self.nn_network(states)
+            # qvals_next = self.nn_network(next_states.detach()) # astar mode
             qvals_t = self.nn_network_t(next_states.detach())
-            qs = qvals_t.gather(dim=1, 
-                                index=astar.unsqueeze(dim=1)
-                                ).squeeze()
+            support = utils.get_support(self.cfg)
+            qvals_t = qvals_t.detach().clone()
+            # qvals_next = qvals_next.detach().clone()
 
-            targets = torch.tensor(rewards + (1-dones.numpy()) * self.cfg.gamma,
-                                   dtype=torch.float32) * qs.detach()
-
+            if self.cfg.prob_q:
+                next_actions = np.empty(qvals_t.shape[0])
+                for i in range(qvals_t.shape[0]):
+                    # expectations = [support @ qvals_t[i,a,:] # original_mode
+                    # expectations = [support @ qvals_next[i,a,:] # astar mode
+                    expectations = [support @ qvals.detach()[i,a,:] # astar mode
+                                        for a in range(qvals_t.shape[1])]
+                    # expectations = qvals_t[i].mean(dim=1)
+                    # print(expectations)
+                    # next_actions[i] = np.argmax(expectations)
+                    next_actions[i] = np.argmax(expectations)
+                # print(next_actions)
+                
+                # batch * action_space * support_length
+                action_mask_target = torch.tensor(next_actions, dtype=torch.int64).unsqueeze(dim=1) \
+                                        .repeat(1, self.cfg.support_div).unsqueeze(dim=1)
+                next_dist = qvals_t.gather(1, action_mask_target).squeeze()
+                targets = rewards.detach().unsqueeze(1) \
+                            + torch.tensor(
+                                    (1-dones.unsqueeze(1).numpy()) * self.cfg.gamma,
+                                    dtype=torch.float32
+                                    ) \
+                            * next_dist.detach()
+                action_mask_qval = torch.tensor(actions, dtype=torch.int64).unsqueeze(dim=1) \
+                                        .repeat(1, self.cfg.support_div).unsqueeze(dim=1)
+                qvals = qvals.gather(1, action_mask_qval).squeeze()
+            else:
+                astar = torch.argmax(qvals, dim=1)
+                qs = qvals_t.gather(dim=1, 
+                                    index=astar.unsqueeze(dim=1)
+                                    ).squeeze()
+                targets = rewards.detach() + torch.tensor((1-dones.numpy()) * self.cfg.gamma,
+                                    dtype=torch.float32) * qs.detach()
+                
             train_batch = (targets, qvals, actions)
 
         return train_batch

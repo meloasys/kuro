@@ -27,11 +27,20 @@ class Config:
             else:
                 raise ValueError('prob_q should be included \
                                 in config file for value_nn')
+    
+    def dump2yaml(self, file_to) -> None:
+        file_to = file_to / 'config.yaml'
+        with open(file_to, 'w+') as f:
+            yaml.dump(vars(self), f, allow_unicode=True)
         
 
 if __name__ == '__main__':
     import dotenv, os
     dotenv.load_dotenv()
     cfg = Config()
-    print(cfg.n_step_mode)
+    print(cfg.batch_size)
+
+    cfg.batch_size = 10000
+
+    cfg.dump2yaml()
     
